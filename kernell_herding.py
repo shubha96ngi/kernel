@@ -90,6 +90,11 @@ sample = bernoulli.rvs(p=p, size = 100)
 num_trials = [1, 10, 15,  25, 50, 75, 100]
 points = [sample[0:l].mean() for l in num_trials]
 '''
+################ abinesh #################
+# every covariance matrix has some weight on manifold . I think its barycenter weights or it could be something else
+# but barycenter weights are calculated with respect to nearest neighbours 
+# so I am doubtful. first search up for weights and weight should add up to one 
+# complete till here search for something in pyriemann toolbox code on github 
 manifold = SymmetricPositiveDefinite(12)
 objective = compute_centroid(manifold,data)
 #pairwise_dists = pairwise_distance(np.array([samples[5]]), np.array([samples[6]]), metric='riemann')
