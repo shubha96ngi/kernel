@@ -2,6 +2,7 @@
 # kernel herding using gradient descent 
 #https://github.com/rrphys/KernelHerding/blob/master/Herding.ipynb
 
+# still not getting  good plot 
 def expKer(x,samples,gamma):
     #--calcuates the expectation value of the exponential kernel so argmax_x can be found
     #x = candidate super sample to optimize
