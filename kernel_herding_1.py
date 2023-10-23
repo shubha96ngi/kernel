@@ -11,7 +11,7 @@ from pyriemann.utils.kernel import kernel_logeuclid, kernel,kernel_riemann
 from pyriemann.embedding import SpectralEmbedding, _check_dimensions, barycenter_weights
 #from pyriemann.utils.geodesic import geodesic_riemann,geodesic_logeuclid,geodesic_euclid
 from pyriemann.utils.distance import distance, distance_riemann, distance_logeuclid, pairwise_distance
-#from pyriemann.utils.test import is_sym, _get_eigenvals
+from pyriemann.utils.test import is_sym, is_pos_semi_def,(is_sym_pos_def,_get_eigenvals
 from pymanopt.manifolds.manifold import Manifold
 from pymanopt.manifolds import PSDFixedRank,SymmetricPositiveDefinite
 from pymanopt.optimizers.steepest_descent import SteepestDescent
@@ -173,11 +173,19 @@ Xopt = optimizer.run(problem).point
 ############# kernel function ################
 # exponential kernel  versus geodisic exponential kernel??
 # find the difference 
-eps = np.median(pairwise_dists)**2 / 2
-kernel = np.exp(-pairwise_dists**2 / (4 * eps))   # kernel = kernel_riemann(X,Cref,reg=1e-10))
+# kernel should be a square matrix 
+# I am not sure it should be 12x12 or 320x320 check with sir where 320 is nearest neighbors 
+pairwise_dist = pairwise_distance(X,X, metric=metric)  # this is different from the one used above pairwise_dists 
+eps = np.median(pairwise_dist)**2 / 2
+kernel = np.exp(-pairwise_dist**2 / (4 * eps)) # 320x320    # kernel = kernel_riemann(X,Cref,reg=1e-10))
  # normalize the kernel matrix
 q = np.dot(kernel, np.ones(len(kernel)))
 kernel_n = np.divide(kernel, np.outer(q, q))
+# check if it is positive semi definite matrix  # kernel deifne RKHS 
+print(is_pos_semi_def(np.array([kernel_n]))) # its true 
+# also check if it is SPD 
+print(is_sym_pos_def(np.array([kernel_n])) # True
+
 # empirical  mean embedding 
 mu_cap = np.sum(B*kernel)
 # I am not sure check once how to construct empirical mean embedding
