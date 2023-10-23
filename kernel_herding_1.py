@@ -5,6 +5,7 @@ import math
 #from sklearn.manifold import spectral_embedding
 from pyriemann.estimation import Covariances
 from pyriemann.tangentspace import TangentSpace
+from pyriemann.utils.tangentspace import transport,log_map_riemann
 from pyriemann.utils.mean import mean_covariance, mean_euclid,mean_riemann
 #from pyriemann.utils.base import sqrtm
 from pyriemann.utils.kernel import kernel_logeuclid, kernel,kernel_riemann
@@ -92,89 +93,20 @@ B = barycenter_weights(Cref,X, neighbors, metric=metric, reg=reg)
 M = np.mean(data,axis=2)
 mean_data = [M[i] for i in range(320)]
 
-##################Sampling from gaussian distribution #####################
-'''
-import autograd.numpy as np
-#np.set_printoptions(precision=2)
-import matplotlib.pyplot as plt
-#%matplotlib inline
-# Number of data points
-N = 100
-# Dimension of each data point
-D = 12
-# Number of clusters
-K = 320
-pi = list(B[0])
-pi = [np.abs(pi[i]) for i in range(320)]
-mu =  mean_data #[np.array([-4, 1]), np.array([0, 0]), np.array([2, -1])]
-Sigma = [np.array(cov_train[i]) for i in range(320)]
-components = np.random.choice(K, size=N, p=pi)
-samples = np.zeros((N, D))
-# For each component, generate all needed samples
-for k in range(K):
-    # indices of current component in X
-    indices = k == components
-    # number of those occurrences
-    n_k = indices.sum()
-    if n_k > 0:
-        samples[indices, :] = np.random.multivariate_normal(
-            mu[k], Sigma[k], n_k
-        )
 
-for k in range(K):
-    indices = k == components
-    plt.scatter(
-        samples[indices, 0],
-        samples[indices, 1],
-        alpha=0.4
-    )
-plt.axis("equal")
-plt.show()
-
-import sys
-#sys.path.insert(0, "../..")
-from autograd.scipy.special import logsumexp
-import pymanopt
-from pymanopt import Problem
-from pymanopt.manifolds import Euclidean, Product, SymmetricPositiveDefinite
-from pymanopt.optimizers import SteepestDescent
-
-# (1) Instantiate the manifold
-manifold = Product([SymmetricPositiveDefinite(D + 1, k=K), Euclidean(K - 1)])
-
-# (2) Define cost function
-# The parameters must be contained in a list theta.
-@pymanopt.function.autograd(manifold)
-def cost(S, v):
-    # Unpack parameters
-    nu = np.append(v, 0)
-    logdetS = np.expand_dims(np.linalg.slogdet(S)[1], 1)
-    y = np.concatenate([samples.T, np.ones((1, N))], axis=0)
-    # Calculate log_q
-    y = np.expand_dims(y, 0)
-    # 'Probability' of y belonging to each cluster
-    log_q = -0.5 * (np.sum(y * np.linalg.solve(S, y), axis=1) + logdetS)
-
-    alpha = np.exp(nu)
-    alpha = alpha / np.sum(alpha)
-    alpha = np.expand_dims(alpha, 1)
-
-    loglikvec = logsumexp(np.log(alpha) + log_q, axis=0)
-    return -np.sum(loglikvec)
-problem = Problem(manifold, cost)
-
-# (3) Instantiate a Pymanopt optimizer
-optimizer = SteepestDescent(verbosity=1)
-
-# let Pymanopt do the rest
-Xopt = optimizer.run(problem).point
-'''
 ################   abinesh #############################
 ############# kernel function ################
 # exponential kernel  versus geodisic exponential kernel??
 # find the difference 
 # kernel should be a square matrix 
 # I am not sure it should be 12x12 or 320x320 check with sir where 320 is nearest neighbors 
+
+# what we have to do here is take the centroid means Cref 
+# and we have to update its location and this costfuction which is our exponetial kernel and minimise it 
+# so problem is how do we update the position of Cref???
+# expectation maximisation algorithm, proababilistic clustering and unsupervised learning 
+#https://towardsdatascience.com/unsupervised-learning-and-data-clustering-eeecb78b422a
+
 pairwise_dist = pairwise_distance(X,X, metric=metric)  # this is different from the one used above pairwise_dists 
 eps = np.median(pairwise_dist)**2 / 2
 kernel = np.exp(-pairwise_dist**2 / (4 * eps)) # 320x320    # kernel = kernel_riemann(X,Cref,reg=1e-10))
@@ -194,15 +126,95 @@ mu_cap = np.sum(B*kernel)
 TM = select_train()
 # cross check definition of retraction map 
 #taken from https://github.com/pymanopt/pymanopt/blob/master/src/pymanopt/manifolds/positive_definite.py
+# should include a loss function and data line 214
+
+# common tangent space of Cref
+# parallel transport map 
+T = transport(cov_train, Cref, metric='riemann') # Parallel transport of a set of SPD covariance matrices towards a reference matrix.
+# this is for any reference point 
+#why T and tmap are not equal ?
+map_train = TangentSpace().fit_transform(T)  # changed tangent vector 
+tangent_Cref = TangentSpace().fit_transform(Cref)
+tmap = log_map_riemann(cov_train, Cref) # Project matrices in tangent space by Riemannian logarithmic map.
+# this is used with respect to mean_reference matrix 
+
+# but we have to transport tangent vectors not the matrices  
+# now map the gradients 
+
+
 def retraction(X,TM):
   p_inv_tv = np.linalg.solve(X, TM)
   return multiherm(
             X + TM + TM @ p_inv_tv / 2
         )
-def gradient():
+
+# applying riemannian gradient descent 
+#compute loss function, then take a small step in the direction that will minimize loss.
+# for euclidean space 
+#W = W - alpha * gradient(x) and 
+# for the non-euclidean/ riemannian space 
+
+#loss: A function used to compute the loss over our current parameters W and input data.
+#data: what is our training data here ?? # is it unsupervised in cased of ODEs?? Our training data where each training sample is represented by an image (or feature vector).
+#W: Our actual weight matrix that we are optimizing over. Our goal is to apply gradient descent to find a W that yields minimal loss.
+# activation function used here sigmoid or relu 
+# but why do we calculate gradient of activation function 
+#the gradient of a sigmoid activation function is used to update the weights & biases of a neural network. 
+#If these gradients are tiny, the updates to the weights & biases are tiny and the network will not learn.
+# To overcome this we use ReLU 
+# so manually check this gradient of activation function 
+preds = sigmoid_activation(trainX.dot(W))
+error = preds - trainY  # how to calculate error in case of unsupervised learning 
+loss = np.sum(error ** 2)
+losses.append(loss)
+d = error * sigmoid_deriv(preds)
+Wgradient = trainX.T.dot(d)
+Wgradient = evaluate_gradient(loss, data, W)  # retraction(-alpha*gradient(x))
+W += -alpha * Wgradient # where alpha is our learning rate 
+
+#The evaluate_gradient function returns a vector that is K-dimensional, where K is the number of dimensions in our image/feature vector.
+#The Wgradient variable is the actual gradient, where we have a gradient entry for each dimension.
+
+
+
+# if we take loss function from pymanopt 
+#https://github.com/pymanopt/pymanopt/blob/master/examples/notebooks/mixture_of_gaussians.ipynb
+def loss(S, v):
+    # Unpack parameters
+    nu = np.append(v, 0)  # random weights 
+
+    logdetS = np.expand_dims(np.linalg.slogdet(S)[1], 1)  # take logdeterminent of S
+    y = np.concatenate([samples.T, np.ones((1, N))], axis=0) # is it adding bias 
+
+    # Calculate log_q   # 'Probability' of y belonging to each cluster
+    y = np.expand_dims(y, 0) 
+    log_q = -0.5 * (np.sum(y * np.linalg.solve(S, y), axis=1) + logdetS)
+
+    alpha = np.exp(nu)
+    alpha = alpha / np.sum(alpha)  # normalise the weights 
+    alpha = np.expand_dims(alpha, 1)
+    # three cvariance matrix so make it three or they just added one for the bias ?
+
+    loglikvec = logsumexp(np.log(alpha) + log_q, axis=0)  # cross entropy loss of softmax function 
+    #https://blog.feedly.com/tricks-of-the-trade-logsumexp/
+    return -np.sum(loglikvec)
+
+
+def gradient(x):
 #I will work on it next week. Currently busy with office works. till then you do check these 176-192 line steps 
 
-    
+
+# cost function J
+crit = np.linalg.norm(J, ord='fro')
+if crit <= tol:
+    break
+
+#important site 
+#https://agustinus.kristia.de/techblog/2019/02/22/optimization-riemannian-manifolds/
+
+# riemannian gaussian distribution 
+from pyriemann.datasets.sampling import sample_gaussian_spd
+
 
 
 
