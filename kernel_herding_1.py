@@ -185,7 +185,7 @@ def loss(S, v):
     # why we use slogdet 
     # same as in distance_kullback
     #https://github.com/pyRiemann/pyRiemann/blob/9ab58edf009bbcbdace83cadce9459d174a746af/pyriemann/utils/distance.py#L142
-    logdetS = np.expand_dims(np.linalg.slogdet(S)[1], 1)  # take logdeterminent of S
+    logdetS = np.expand_dims(np.linalg.slogdet(S)[1], 1)  # take logdeterminent of S # something to do with eigenvalue and trace 
     y = np.concatenate([samples.T, np.ones((1, N))], axis=0) # is it adding bias 
 
     # Calculate log_q   # 'Probability' of y belonging to each cluster
