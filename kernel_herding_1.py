@@ -182,12 +182,16 @@ W += -alpha * Wgradient # where alpha is our learning rate
 def loss(S, v):
     # Unpack parameters
     nu = np.append(v, 0)  # random weights 
-
+    # why we use slogdet 
+    # same as in distance_kullback
+    #https://github.com/pyRiemann/pyRiemann/blob/9ab58edf009bbcbdace83cadce9459d174a746af/pyriemann/utils/distance.py#L142
     logdetS = np.expand_dims(np.linalg.slogdet(S)[1], 1)  # take logdeterminent of S
     y = np.concatenate([samples.T, np.ones((1, N))], axis=0) # is it adding bias 
 
     # Calculate log_q   # 'Probability' of y belonging to each cluster
     y = np.expand_dims(y, 0) 
+    # y * np.linalg.solve(S, y) # this gives expected y as from tuorial https://aleksandarhaber.com/solve-optimization-problems-in-python-by-using-scipy-library/
+    #then why sum ?
     log_q = -0.5 * (np.sum(y * np.linalg.solve(S, y), axis=1) + logdetS)
 
     alpha = np.exp(nu)
