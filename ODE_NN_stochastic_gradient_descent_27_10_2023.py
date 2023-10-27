@@ -1,3 +1,6 @@
+#Stochastic gradient descent is a simple approach to ( https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6487381)
+#find the local minima of a cost function whose evaluations are corrupted by noise.
+
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
