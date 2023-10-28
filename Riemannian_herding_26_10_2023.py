@@ -40,8 +40,15 @@ def sumKer(x,xss,numSSsoFar,gamma):
     s = total/(numSSsoFar+1)
     return s
 
+from geoopt.optim import RiemannianAdam
+from geoopt.manifolds import Euclidean, ProductManifold, SymmetricPositiveDefinite
+from scipy.optimize import minimize #to do grad descent to find argmax
 
-from scipy.optimize import minimize #to do grad descent to fing argmax
+D = 12; K = 320
+# (1) Instantiate the manifold
+manifold = ProductManifold([SymmetricPositiveDefinite(D + 1, k=K), Euclidean(K - 1)])
+
+
 def herd(samples,totalSS,gamma):
     #-- calculate totalSS super samples from the distribution estimated by samples with kernel hyperparam gamma
     
@@ -68,10 +75,24 @@ def herd(samples,totalSS,gamma):
         #build function for gradient descent to find best point
         f = lambda x: -expKer(x,samples,gamma)+sumKer(x,xss,i,gamma)
         print(f) #.shape, f.ndim)
+
+        # if we would have been using Riemannian gradient descent method 
+        # f is our cost function  # there is also no problem function defined on geoopt
+        problem = Problem(manifold, f)
+                # (3) Instantiate a Pymanopt optimizer
+        optimizer = RiemannianAdam(params=[samples], lr=1e-2, stabilize=1)
+        # let Pymanopt do the rest
+        Xopt = optimizer.step()  #run(problem).point
+
+# let Pymanopt do the rest
+Xopt = optimizer.run(problem).point
+
+        '''
         results = minimize(f,
                            bestSeed,
                            method='nelder-mead',
                            options={'xtol': 1e-4, 'disp': False})
+        '''
 #         print "results.x"
 #         print results.x
         
