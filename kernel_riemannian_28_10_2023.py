@@ -6,8 +6,8 @@ def create_cost_and_derivates(manifold, matrix):
         numSamples = len(matrix)
         return   np.sum([np.exp(distance_riemann(-x.T*x, matrix[i])**2) for i in range(numSamples)])/numSamples  
     return cost, euclidean_gradient
-n = 12 ; k = 1
-manifold =  SymmetricPositiveDefinite(n,k)
+n = 12 
+manifold =  SymmetricPositiveDefinite(n)
 cost, euclidean_gradient = create_cost_and_derivates(manifold, matrix)
 problem = pymanopt.Problem(manifold, cost, euclidean_gradient=euclidean_gradient)
 
