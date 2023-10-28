@@ -84,8 +84,6 @@ def herd(samples,totalSS,gamma):
         # let Pymanopt do the rest
         Xopt = optimizer.step()  #run(problem).point
 
-# let Pymanopt do the rest
-Xopt = optimizer.run(problem).point
 
         '''
         results = minimize(f,
