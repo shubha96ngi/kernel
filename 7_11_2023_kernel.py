@@ -123,13 +123,30 @@ D = 12; K = 320
 # (1) Instantiate the manifold
 manifold = ProductManifold([SymmetricPositiveDefinite(D + 1, k=K), Euclidean(K - 1)])  # I have doubt here should i choose product manifold or single SPD manifold 
 manifold = SymmetricPositiveDefinite(D + 1, k=K)
-
+'''
 problem = pymanopt.Problem(manifold, cost)
 optimizer = pymanopt.optimizers.NelderMead() #RiemannianAdam()
 result = optimizer.run(problem).point
 print(result)
-
-os(numDim)
+'''
+def herd(samples,totalSS,gamma):
+    #-- calculate totalSS super samples from the distribution estimated by samples with kernel hyperparam gamma
+    
+    #init vars and extract useful info from inputs
+    #get GMM dims and num samples
+    numDim = samples.shape[1]
+    numSamples = samples.shape[0]
+    
+    #init vars
+    gradientFail = 0; #count when optimization fails, debugging
+    xss = np.zeros((totalSS,numDim)) #open space in mem for array of super samples
+    i=1
+    #gradient descent can have some probems, so make bounds to terminate if goes too far away
+    minBound = np.min(samples)
+    maxBound = np.max(samples)
+    #start our search at the origin, could be a random point
+    bestSeed = np.zeros(numDim)
+    
     while i<totalSS-1:
       
         #build function for  riemannian gradient descent to find best point
